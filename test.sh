@@ -3,9 +3,9 @@
 # Initialize variables
 declare -A parked_cars
 declare -A parking_times
-declare -i total_spots=10
-declare -i occupied_spots=0
-declare -a available_spots=($(seq 1 $total_spots))
+total_spots=10
+occupied_spots=0
+available_spots=($(seq 1 $total_spots))
 ticket_counter=0
 
 # Function to generate a unique ticket ID
@@ -13,22 +13,27 @@ generate_ticket_id() {
     ticket_counter=$((ticket_counter + 1))
     echo "TICKET$ticket_counter"
 }
+
 # Function to park a car
 park_car() {
     car=$1
+    spot=$2
     ticket_id=$(generate_ticket_id)
-    parked_cars[$ticket_id]=$car
+    parked_cars[$ticket_id]="$car $spot"
     parking_times[$ticket_id]=$(date +%s)
     occupied_spots=$((occupied_spots + 1))
-    available_spots=(${available_spots[@]/$occupied_spots})
-    echo "Parked car: $car"
+    available_spots=(${available_spots[@]/$spot/})
+    echo "Parked car: $car at spot: $spot"
     echo "Ticket ID: $ticket_id"
 }
+
 # Function to retrieve a car
 retrieve_car() {
     ticket_id=$1
     if [[ -n ${parked_cars[$ticket_id]} ]]; then
-        car=${parked_cars[$ticket_id]}
+        car_spot=(${parked_cars[$ticket_id]})
+        car=${car_spot[0]}
+        spot=${car_spot[1]}
         parked_time=${parking_times[$ticket_id]}
         current_time=$(date +%s)
         parked_duration=$(( (current_time - parked_time) / 60 )) # in minutes
@@ -36,10 +41,10 @@ retrieve_car() {
         unset parked_cars[$ticket_id]
         unset parking_times[$ticket_id]
         occupied_spots=$((occupied_spots - 1))
-        available_spots+=($occupied_spots)
-        echo "Retrieved car: $car"
+        available_spots+=($spot)
+        echo "Retrieved car: $car from spot: $spot"
         echo "Parked duration: $parked_duration minutes"
-        echo "Cost: $cost"
+        echo "Cost: \$$cost"
     else
         echo "Invalid ticket ID"
     fi
@@ -54,7 +59,7 @@ show_available_spots() {
 select_parking_spot() {
     read -p "Select a parking spot: " selected_spot
     if [[ " ${available_spots[@]} " =~ " $selected_spot " ]]; then
-        park_car "$car_number"
+        park_car "$car_number" "$selected_spot"
     else
         echo "Invalid parking spot. Please select from the available spots."
     fi
